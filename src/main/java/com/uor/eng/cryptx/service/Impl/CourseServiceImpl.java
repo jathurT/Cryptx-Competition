@@ -4,7 +4,6 @@ import com.uor.eng.cryptx.exception.CourseNotFoundException;
 import com.uor.eng.cryptx.model.Course;
 import com.uor.eng.cryptx.repository.CourseRepository;
 import com.uor.eng.cryptx.service.CourseService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +13,15 @@ import java.util.List;
 @Transactional
 public class CourseServiceImpl implements CourseService {
 
-  @Autowired
-  private CourseRepository courseRepository;
+  private final CourseRepository courseRepository;
+
+  public CourseServiceImpl(CourseRepository courseRepository) {
+    this.courseRepository = courseRepository;
+  }
 
   @Override
   public Course createCourse(Course course) {
+    // Put any additional checks/business logic here.
     return courseRepository.save(course);
   }
 
@@ -41,6 +44,8 @@ public class CourseServiceImpl implements CourseService {
     existingCourse.setCourseName(updatedCourse.getCourseName());
     existingCourse.setDescription(updatedCourse.getDescription());
     existingCourse.setCourseFee(updatedCourse.getCourseFee());
+    // Update other fields if needed
+
     return courseRepository.save(existingCourse);
   }
 
