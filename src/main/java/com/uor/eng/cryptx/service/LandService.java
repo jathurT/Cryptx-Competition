@@ -2,21 +2,27 @@ package com.uor.eng.cryptx.service;
 
 import com.uor.eng.cryptx.exception.LandNotFoundException;
 import com.uor.eng.cryptx.model.Land;
+import com.uor.eng.cryptx.model.LandPhoto;
+import com.uor.eng.cryptx.payload.other.AssociatePhotosRequest;
+import com.uor.eng.cryptx.payload.other.LandPhotoResponse;
+import com.uor.eng.cryptx.repository.LandPhotoRepository;
 import com.uor.eng.cryptx.repository.LandRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @Transactional
 public class LandService {
 
-  private final LandRepository landRepository;
+  @Autowired
+  private  LandRepository landRepository;
 
-  public LandService(LandRepository landRepository) {
-    this.landRepository = landRepository;
-  }
+  @Autowired
+  private LandPhotoRepository landPhotoRepository;
 
   public Land createLand(Land land) {
     // You can place validations or business checks here
@@ -49,5 +55,24 @@ public class LandService {
     Land land = landRepository.findById(id)
         .orElseThrow(() -> new LandNotFoundException("Cannot delete. Land not found with id: " + id));
     landRepository.delete(land);
+  }
+  public List<LandPhotoResponse> associatePhotosWithLand(Long landId, AssociatePhotosRequest request) {
+    Land land = getLandById(landId);
+
+    List<LandPhotoResponse> responses = new ArrayList<>();
+
+    for (String key : request.getS3Keys()) {
+      LandPhoto photo = new LandPhoto(key, land);
+      LandPhoto saved = landPhotoRepository.save(photo);
+
+      LandPhotoResponse resp = new LandPhotoResponse(
+          saved.getId(),
+          saved.getS3Key(),
+          "Photo associated successfully."
+      );
+      responses.add(resp);
+    }
+
+    return responses;
   }
 }

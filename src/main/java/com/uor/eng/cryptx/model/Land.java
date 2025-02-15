@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -30,6 +33,9 @@ public class Land {
   @OneToOne
   @JoinColumn(name = "buyer_id")
   private Buyer buyer;
+
+  @OneToMany(mappedBy = "land", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<LandPhoto> photos = new ArrayList<>();
 
   public Land(Long addressId, Double minPrice, Double size, String description, LandOwner landOwner, Buyer buyer, String address) {
     this.landId = addressId;

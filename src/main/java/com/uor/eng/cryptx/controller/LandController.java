@@ -1,6 +1,8 @@
 package com.uor.eng.cryptx.controller;
 
 import com.uor.eng.cryptx.model.Land;
+import com.uor.eng.cryptx.payload.other.AssociatePhotosRequest;
+import com.uor.eng.cryptx.payload.other.LandPhotoResponse;
 import com.uor.eng.cryptx.service.LandService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -45,4 +47,14 @@ public class LandController {
     landService.deleteLand(id);
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
   }
+
+  @PostMapping("/{landId}/photos")
+  public ResponseEntity<List<LandPhotoResponse>> associatePhotosWithLand(
+      @PathVariable Long landId,
+      @RequestBody AssociatePhotosRequest request
+  ) {
+    List<LandPhotoResponse> responses = landService.associatePhotosWithLand(landId, request);
+    return new ResponseEntity<>(responses, HttpStatus.OK);
+  }
+
 }
