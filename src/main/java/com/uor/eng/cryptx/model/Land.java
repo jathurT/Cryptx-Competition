@@ -40,4 +40,13 @@ public class Land {
     this.landOwner = landOwner;
     this.buyer = buyer;
   }
+
+  public Land(Long addressId, Double minPrice, Double size, String description, LandOwner landOwner, String address) {
+    this.landId = addressId;
+    this.address = address;
+    this.minPrice = minPrice;
+    this.size = size;
+    this.description = description;
+    this.landOwner = landOwner;
+  }
 }

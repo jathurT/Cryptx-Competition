@@ -16,13 +16,13 @@ public class LandController {
   @Autowired
   private LandService landService;
 
-  @PostMapping
+  @PostMapping("/create")
   public ResponseEntity<Land> createLand(@RequestBody Land land) {
     Land createdLand = landService.createLand(land);
     return new ResponseEntity<>(createdLand, HttpStatus.CREATED);
   }
 
-  @GetMapping
+  @GetMapping("/all")
   public ResponseEntity<List<Land>> getAllLands() {
     List<Land> lands = landService.getAllLands();
     return new ResponseEntity<>(lands, HttpStatus.OK);
