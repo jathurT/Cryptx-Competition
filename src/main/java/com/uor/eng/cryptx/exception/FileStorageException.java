@@ -1,4 +1,4 @@
-package com.uor.eng.cryptx.exceptions;
+package com.uor.eng.cryptx.exception;
 
 public class FileStorageException   extends RuntimeException {
     public FileStorageException(String message) {

@@ -1,6 +1,6 @@
 package com.uor.eng.cryptx.util;
 
-import com.uor.eng.cryptx.exceptions.FileStorageException;
+import com.uor.eng.cryptx.exception.FileStorageException;
 import com.uor.eng.cryptx.payload.other.PresignedUrlRequest;
 import com.uor.eng.cryptx.payload.other.PresignedUrlResponse;
 import jakarta.annotation.PostConstruct;

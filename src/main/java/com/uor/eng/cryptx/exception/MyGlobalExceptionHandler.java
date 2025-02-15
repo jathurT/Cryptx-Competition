@@ -1,6 +1,6 @@
 // src/main/java/com/uor/eng/exceptions/MyGlobalExceptionHandler.java
 
-package com.uor.eng.cryptx.exceptions;
+package com.uor.eng.cryptx.exception;
 
 import com.uor.eng.cryptx.payload.other.ErrorResponse;
 import io.jsonwebtoken.JwtException;

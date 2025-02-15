@@ -16,10 +16,10 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @Table(name = "users",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = "username"),
-                @UniqueConstraint(columnNames = "email")
-        }
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = "username"),
+        @UniqueConstraint(columnNames = "email")
+    }
 )
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "user_type", discriminatorType = DiscriminatorType.STRING)
@@ -54,13 +54,13 @@ public class User {
   @Getter
   @Setter
   @ManyToMany(fetch = FetchType.EAGER,
-          cascade = {
-                  CascadeType.MERGE
-          }
+      cascade = {
+          CascadeType.MERGE
+      }
   )
   @JoinTable(name = "user_roles",
-          joinColumns = @JoinColumn(name = "user_id"),
-          inverseJoinColumns = @JoinColumn(name = "role_id")
+      joinColumns = @JoinColumn(name = "user_id"),
+      inverseJoinColumns = @JoinColumn(name = "role_id")
   )
   private Set<Role> roles = new HashSet<>();
 }

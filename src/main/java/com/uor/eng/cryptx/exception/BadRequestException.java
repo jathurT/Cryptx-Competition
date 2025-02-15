@@ -1,4 +1,4 @@
-package com.uor.eng.cryptx.exceptions;
+package com.uor.eng.cryptx.exception;
 
 public class BadRequestException extends RuntimeException {
   public BadRequestException(String message) {

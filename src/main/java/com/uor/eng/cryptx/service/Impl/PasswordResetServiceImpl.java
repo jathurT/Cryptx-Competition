@@ -1,7 +1,7 @@
 package com.uor.eng.cryptx.service.Impl;
 
-import com.uor.eng.cryptx.exceptions.APIException;
-import com.uor.eng.cryptx.exceptions.EmailSendingException;
+import com.uor.eng.cryptx.exception.APIException;
+import com.uor.eng.cryptx.exception.EmailSendingException;
 import com.uor.eng.cryptx.model.PasswordResetToken;
 import com.uor.eng.cryptx.model.User;
 import com.uor.eng.cryptx.payload.auth.ForgotPasswordRequest;

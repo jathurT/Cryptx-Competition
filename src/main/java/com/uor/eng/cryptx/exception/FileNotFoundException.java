@@ -1,4 +1,4 @@
-package com.uor.eng.cryptx.exceptions;
+package com.uor.eng.cryptx.exception;
 
 public class FileNotFoundException  extends RuntimeException {
     public FileNotFoundException(String message) {

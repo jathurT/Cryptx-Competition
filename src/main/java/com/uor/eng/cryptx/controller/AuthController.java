@@ -54,76 +54,143 @@ public class AuthController {
   @Autowired
   private PasswordResetService passwordResetService;
 
+  /**
+   * Logs in the user and returns a JWT cookie plus user info.
+   */
   @PostMapping("/signin")
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
     Authentication authentication;
     try {
-      authentication = authenticationManager
-              .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUserNameOrEmail(), loginRequest.getPassword()));
-    } catch (AuthenticationException exception) {
+      authentication = authenticationManager.authenticate(
+          new UsernamePasswordAuthenticationToken(
+              loginRequest.getUserNameOrEmail(),
+              loginRequest.getPassword()
+          )
+      );
+    } catch (AuthenticationException ex) {
       Map<String, Object> map = new HashMap<>();
       map.put("message", "Bad credentials");
       map.put("status", false);
-      return new ResponseEntity<Object>(map, HttpStatus.UNAUTHORIZED);
+      return new ResponseEntity<>(map, HttpStatus.UNAUTHORIZED);
     }
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
-
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
+    // Generate JWT as a cookie:
     ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
 
     List<String> roles = userDetails.getAuthorities().stream()
-            .map(item -> item.getAuthority())
-            .collect(Collectors.toList());
+        .map(item -> item.getAuthority())
+        .collect(Collectors.toList());
 
-    UserInfoResponse response = new UserInfoResponse(userDetails.getId(),
-            userDetails.getUsername(), roles, jwtCookie.toString());
+    // Build a simple response with user info & the cookie
+    UserInfoResponse response = new UserInfoResponse(
+        userDetails.getId(),
+        userDetails.getUsername(),
+        roles,
+        jwtCookie.toString()
+    );
 
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,
-                    jwtCookie.toString())
-            .body(response);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+        .body(response);
   }
 
+  /**
+   * Registers a new user.
+   * Uses existing roles from DB, which are guaranteed by the CommandLineRunner in WebSecurityConfig.
+   */
   @PostMapping("/signup")
   public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+    // Check username
     if (userRepository.existsByUserName(signUpRequest.getUsername())) {
-      return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
+      return ResponseEntity
+          .badRequest()
+          .body(new MessageResponse("Error: Username is already taken!"));
     }
 
+    // Check email
     if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-      return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+      return ResponseEntity
+          .badRequest()
+          .body(new MessageResponse("Error: Email is already in use!"));
     }
 
-    User user = new User(signUpRequest.getUsername(),
-            signUpRequest.getEmail(),
-            encoder.encode(signUpRequest.getPassword()));
+    // Create a new user
+    User user = new User(
+        signUpRequest.getUsername(),
+        signUpRequest.getEmail(),
+        encoder.encode(signUpRequest.getPassword())
+    );
 
+    // We rely on roles from the DB, created in the CommandLineRunner
     Set<String> strRoles = signUpRequest.getRole();
     Set<Role> roles = new HashSet<>();
 
-    if (strRoles == null) {
-      Role userRole = roleRepository.findByRoleName(AppRole.BUYER)
-              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-      roles.add(userRole);
+    if (strRoles == null || strRoles.isEmpty()) {
+      // Default role is BUYER
+      Role defaultRole = roleRepository.findByRoleName(AppRole.BUYER)
+          .orElseThrow(() -> new RuntimeException("Error: Default role (BUYER) not found."));
+      roles.add(defaultRole);
     } else {
-        Role adminRole = roleRepository.findByRoleName(AppRole.ADMIN)
-                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-        roles.add(adminRole);
+      // For each requested role, find it in DB:
+      for (String roleStr : strRoles) {
+        // Convert e.g. "admin" to AppRole.ADMIN, "buyer" to AppRole.BUYER, etc.
+        String lowercase = roleStr.trim().toLowerCase();
+        switch (lowercase) {
+          case "admin":
+            Role adminRole = roleRepository.findByRoleName(AppRole.ADMIN)
+                .orElseThrow(() -> new RuntimeException("Error: Admin role not found."));
+            roles.add(adminRole);
+            break;
+          case "farmer_owner":
+            Role ownerRole = roleRepository.findByRoleName(AppRole.FARMER_OWNER)
+                .orElseThrow(() -> new RuntimeException("Error: FarmerOwner role not found."));
+            roles.add(ownerRole);
+            break;
+          case "farmer_employee":
+            Role employeeRole = roleRepository.findByRoleName(AppRole.FARMER_EMPLOYEE)
+                .orElseThrow(() -> new RuntimeException("Error: FarmerEmployee role not found."));
+            roles.add(employeeRole);
+            break;
+          case "former_farmer":
+            Role formerFarmerRole = roleRepository.findByRoleName(AppRole.FORMER_FARMER)
+                .orElseThrow(() -> new RuntimeException("Error: FormerFarmer role not found."));
+            roles.add(formerFarmerRole);
+            break;
+          default:
+            // if none matched, assume it's buyer
+            Role buyerRole = roleRepository.findByRoleName(AppRole.BUYER)
+                .orElseThrow(() -> new RuntimeException("Error: Buyer role not found."));
+            roles.add(buyerRole);
+            break;
+        }
+      }
     }
+
     user.setRoles(roles);
+    // Save the user normally. Because we removed CascadeType.PERSIST on the roles side,
+    // we won't "re-persist" any existing roles.
     userRepository.save(user);
+
     return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
   }
 
+  /**
+   * Logs out user by clearing JWT cookie
+   */
   @PostMapping("/signout")
   public ResponseEntity<?> signoutUser() {
     ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,
-                    cookie.toString())
-            .body(new MessageResponse("You've been signed out!"));
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+        .body(new MessageResponse("You've been signed out!"));
   }
 
+  /**
+   * Returns basic user info of the currently authenticated user
+   */
   @GetMapping("/user")
   public ResponseEntity<?> getUserDetails(Authentication authentication) {
     if (authentication == null || !authentication.isAuthenticated()) {
@@ -131,29 +198,37 @@ public class AuthController {
     }
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
     List<String> roles = userDetails.getAuthorities().stream()
-            .map(item -> item.getAuthority())
-            .collect(Collectors.toList());
-    UserInfoResponse response = new UserInfoResponse(userDetails.getId(),
-            userDetails.getUsername(), roles);
-
-    return ResponseEntity.ok().body(response);
+        .map(item -> item.getAuthority())
+        .collect(Collectors.toList());
+    UserInfoResponse response = new UserInfoResponse(
+        userDetails.getId(),
+        userDetails.getUsername(),
+        roles
+    );
+    return ResponseEntity.ok(response);
   }
-
 
   @GetMapping("/username")
   public ResponseEntity<String> currentUserName(Authentication authentication) {
-    if (authentication != null)
+    if (authentication != null) {
       return ResponseEntity.ok(authentication.getName());
-    else
+    } else {
       return ResponseEntity.ok("anonymousUser");
+    }
   }
 
+  /**
+   * Send password reset link
+   */
   @PostMapping("/forgot-password")
   public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest forgotPasswordRequest) {
     passwordResetService.initiatePasswordReset(forgotPasswordRequest);
-    return new ResponseEntity<>(new MessageResponse("Password reset link sent to your email."), HttpStatus.OK);
+    return ResponseEntity.ok(new MessageResponse("Password reset link sent to your email."));
   }
 
+  /**
+   * Resets user's password
+   */
   @PostMapping("/reset-password")
   public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
     passwordResetService.resetPassword(request);

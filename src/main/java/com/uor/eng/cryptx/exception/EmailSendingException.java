@@ -1,4 +1,4 @@
-package com.uor.eng.cryptx.exceptions;
+package com.uor.eng.cryptx.exception;
 
 public class EmailSendingException extends RuntimeException {
     public EmailSendingException(String message) {
