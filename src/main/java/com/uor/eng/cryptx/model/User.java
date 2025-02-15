@@ -55,7 +55,6 @@ public class User {
   @Setter
   @ManyToMany(fetch = FetchType.EAGER,
           cascade = {
-                  CascadeType.PERSIST,
                   CascadeType.MERGE
           }
   )

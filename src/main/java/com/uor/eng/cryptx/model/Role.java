@@ -18,10 +18,10 @@ public class Role {
   @Column(name = "role_id")
   private Long roleId;
 
-  @Column(name = "role_name", length = 20)
   @Enumerated(EnumType.STRING)
-  @ToString.Exclude
+  @Column(name = "role_name", length = 30, columnDefinition = "VARCHAR(30)")
   private AppRole roleName;
+
 
   public Role(AppRole roleName) {
     this.roleName = roleName;

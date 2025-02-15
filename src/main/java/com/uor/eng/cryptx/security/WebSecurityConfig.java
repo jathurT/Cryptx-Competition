@@ -29,7 +29,6 @@ import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
-//@EnableMethodSecurity
 public class WebSecurityConfig {
 
   @Autowired
@@ -59,93 +58,112 @@ public class WebSecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-            .cors(Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable())
-            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth ->
-                            auth.requestMatchers("/api/auth/**").permitAll()
-                                    .requestMatchers("/v3/api-docs/**").permitAll()
-                                    .requestMatchers("/swagger-ui/**").permitAll()
-                                    .requestMatchers("/api/test/**").permitAll()
-                                    .requestMatchers("/images/**").permitAll()
-                                    .requestMatchers("/api/bookings/create").permitAll()
-                                    .requestMatchers("/api/bookings/{referenceId}/{contactNumber}").permitAll()
-                                    .requestMatchers("/api/schedules/{id}").permitAll()
-                                    .requestMatchers("/api/schedules/getSeven").permitAll()
-                                    .requestMatchers("/api/feedback/submit").permitAll()
-                                    .requestMatchers("/api/contacts/submit").permitAll()
-//                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                                    .anyRequest().authenticated()
-            );
+        .cors(Customizer.withDefaults())
+        .csrf(csrf -> csrf.disable())
+        .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            // Public endpoints:
+            .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/v3/api-docs/**").permitAll()
+            .requestMatchers("/swagger-ui/**").permitAll()
+            .requestMatchers("/api/test/**").permitAll()
+            .requestMatchers("/images/**").permitAll()
+            // Add more patterns if needed:
+            .requestMatchers("/api/bookings/create").permitAll()
+            .requestMatchers("/api/bookings/{referenceId}/{contactNumber}").permitAll()
+            .requestMatchers("/api/schedules/{id}").permitAll()
+            .requestMatchers("/api/schedules/getSeven").permitAll()
+            .requestMatchers("/api/feedback/submit").permitAll()
+            .requestMatchers("/api/contacts/submit").permitAll()
+            // Everything else:
+            .anyRequest().authenticated()
+        );
 
     http.authenticationProvider(authenticationProvider());
-
     http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-    http.headers(headers -> headers.frameOptions(
-            frameOptions -> frameOptions.sameOrigin()));
+    http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
     return http.build();
   }
 
   @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-    return authenticationConfiguration.getAuthenticationManager();
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+    return authConfig.getAuthenticationManager();
   }
 
   @Bean
   public WebSecurityCustomizer webSecurityCustomizer() {
     return (web) -> web.ignoring().requestMatchers(
-            "/v2/api-docs",
-            "/configuration/ui",
-            "/swagger-resources/**",
-            "/configuration/security",
-            "/swagger-ui.html",
-            "/webjars/**"
+        "/v2/api-docs",
+        "/configuration/ui",
+        "/swagger-resources/**",
+        "/configuration/security",
+        "/swagger-ui.html",
+        "/webjars/**"
     );
   }
 
-
+  /**
+   * Creates default roles if they don't exist, then creates a few default users.
+   * This ensures we never try to persist an already-existing Role,
+   * preventing "detached entity passed to persist" errors.
+   */
   @Bean
-  public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+  public CommandLineRunner initData(
+      RoleRepository roleRepository,
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder
+  ) {
     return args -> {
-      // Retrieve or create roles
-      Role userRole = roleRepository.findByRoleName(AppRole.USER)
-              .orElseGet(() -> {
-                Role newUserRole = new Role(AppRole.USER);
-                return roleRepository.save(newUserRole);
-              });
+      // 1) Find or create roles:
+      Role userRole = roleRepository.findByRoleName(AppRole.BUYER)
+          .orElseGet(() -> roleRepository.save(new Role(AppRole.BUYER)));
 
       Role adminRole = roleRepository.findByRoleName(AppRole.ADMIN)
-              .orElseGet(() -> {
-                Role newAdminRole = new Role(AppRole.ADMIN);
-                return roleRepository.save(newAdminRole);
-              });
+          .orElseGet(() -> roleRepository.save(new Role(AppRole.ADMIN)));
 
-      Set<Role> userRoles = Set.of(userRole);
+      Role farmerOwnerRole = roleRepository.findByRoleName(AppRole.FARMER_OWNER)
+          .orElseGet(() -> roleRepository.save(new Role(AppRole.FARMER_OWNER)));
+
+      Role farmerEmployeeRole = roleRepository.findByRoleName(AppRole.FARMER_EMPLOYEE)
+          .orElseGet(() -> roleRepository.save(new Role(AppRole.FARMER_EMPLOYEE)));
+
+      Role formerFarmerRole = roleRepository.findByRoleName(AppRole.FORMER_FARMER)
+          .orElseGet(() -> roleRepository.save(new Role(AppRole.FORMER_FARMER)));
+
       Set<Role> adminRoles = Set.of(userRole, adminRole);
 
-
+      // 2) Create default users if needed:
       if (!userRepository.existsByUserName("admin")) {
         User admin = new User("admin", "admin@example.com", passwordEncoder.encode("adminPass"));
-        userRepository.save(admin);
-      }
-
-      if (!userRepository.existsByUserName("user")) {
-        User user = new User("user", "user@gmail.com", passwordEncoder.encode("userPass"));
-        userRepository.save(user);
-      }
-      // Update roles for existing users
-      userRepository.findByUserName("user").ifPresent(currentUser -> {
-        currentUser.setRoles(userRoles);
-        userRepository.save(currentUser);
-      });
-
-      userRepository.findByUserName("admin").ifPresent(admin -> {
         admin.setRoles(adminRoles);
         userRepository.save(admin);
-      });
+      }
+
+      if (!userRepository.existsByUserName("buyer")) {
+        User buyer = new User("buyer", "buyer@gmail.com", passwordEncoder.encode("buyerPass"));
+        buyer.setRoles(Set.of(userRole));
+        userRepository.save(buyer);
+      }
+
+      if (!userRepository.existsByUserName("farmerOwner")) {
+        User farmerOwner = new User("farmerOwner", "farmer@gmail.com", passwordEncoder.encode("farmerOwnerPass"));
+        farmerOwner.setRoles(Set.of(farmerOwnerRole));
+        userRepository.save(farmerOwner);
+      }
+
+      if (!userRepository.existsByUserName("farmerEmployee")) {
+        User farmerEmployee = new User("farmerEmployee", "farmerEmployee@gmail.com", passwordEncoder.encode("farmerEmployeePass"));
+        farmerEmployee.setRoles(Set.of(farmerEmployeeRole));
+        userRepository.save(farmerEmployee);
+      }
+
+      if (!userRepository.existsByUserName("formerFarmer")) {
+        User formerFarmer = new User("formerFarmer", "formerFarmer@gmail.com", passwordEncoder.encode("formerFarmerPass"));
+        formerFarmer.setRoles(Set.of(formerFarmerRole));
+        userRepository.save(formerFarmer);
+      }
     };
   }
 }
-
